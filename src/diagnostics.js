@@ -72,3 +72,23 @@ export async function runDiagnostics() {
     audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true } };
   return { schemaVersion: 1, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio }, results };
 }
+
+
+/** Structural validation for imported snapshots; not an authenticity check. */
+export function validateSnapshot(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  if (value.schemaVersion !== 1) return false;
+  if (typeof value.id !== "string" || value.id.length < 1 || value.id.length > 128) return false;
+  if (typeof value.timestamp !== "string" || !Number.isFinite(Date.parse(value.timestamp))) return false;
+  if (!value.environment || typeof value.environment !== "object" || Array.isArray(value.environment)) return false;
+  if (!value.probes || typeof value.probes !== "object" || Array.isArray(value.probes)) return false;
+  if (!value.results || typeof value.results !== "object" || Array.isArray(value.results)) return false;
+  const allowed = new Set(["canvas", "webgl", "audio", "environment"]);
+  const keys = Object.keys(value.results);
+  if (keys.length !== 4 || keys.some(key => !allowed.has(key))) return false;
+  return keys.every(key => {
+    const result = value.results[key];
+    return result && typeof result === "object" && typeof result.available === "boolean" &&
+      (result.digest === null || (typeof result.digest === "string" && result.digest.length <= 128));
+  });
+}
