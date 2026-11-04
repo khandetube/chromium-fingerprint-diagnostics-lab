@@ -65,7 +65,7 @@ test("validateSnapshot rejects malformed, oversized, and unsupported snapshots",
   assert.equal(validateSnapshot(null), false);
   assert.equal(validateSnapshot({ schemaVersion: 2 }), false);
   const snapshot = {
-    schemaVersion: 1, id: "run-1", timestamp: "2026-11-04T10:00:00.000Z",
+    schemaVersion: 2, id: "run-1", timestamp: "2026-11-04T10:00:00.000Z",
     environment: {}, probes: {},
     results: Object.fromEntries(["canvas", "webgl", "audio", "environment", "benchmark"].map(key =>
       [key, { available: true, digest: "x".repeat(129) }]))
