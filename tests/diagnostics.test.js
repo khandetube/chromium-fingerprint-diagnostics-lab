@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment } from "../src/diagnostics.js";
+import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe } from "../src/diagnostics.js";
 
 test("stableStringify sorts object keys recursively", () => {
   assert.equal(stableStringify({ z: 1, a: { y: 2, b: 3 } }), '{"a":{"b":3,"y":2},"z":1}');
@@ -35,4 +35,18 @@ test("summarizeArray reports invalid values without corrupting statistics", () =
 });
 test("compareSnapshots treats missing digests as added or removed", () => {
   assert.deepEqual(compareSnapshots({results:{}},{results:{canvas:{digest:"abc"}}})[0].status,"added");
+});
+
+test("canvasProbe returns a structured unavailable result when pixel readback is blocked", () => {
+  const doc = { createElement: () => ({ getContext: () => ({ fillRect(){}, fillText(){}, beginPath(){}, arc(){}, getImageData(){ throw new Error("readback blocked"); } }) }) };
+  const result = canvasProbe(doc); assert.equal(result.available, false); assert.match(result.reason, /readback blocked/);
+});
+test("webglProbe reports missing contexts without throwing", () => {
+  const result = webglProbe({ createElement: () => ({ getContext: () => null }) }); assert.equal(result.available, false); assert.match(result.reason, /WebGL unavailable/);
+});
+test("audioProbe returns unavailable when OfflineAudioContext is missing", async () => {
+  const result = await audioProbe({}); assert.equal(result.available, false); assert.equal(result.digest, null);
+});
+test("collectEnvironment detects storage exceptions safely", () => {
+  const win = { get localStorage(){ throw new Error("blocked"); }, document: null }; const env = collectEnvironment({}, win); assert.equal(env.features.localStorage, false);
 });
