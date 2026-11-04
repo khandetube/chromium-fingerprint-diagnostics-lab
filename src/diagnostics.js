@@ -128,7 +128,27 @@ export function webglRenderingProbe(doc = globalThis.document) {
   finally{try{if(gl&&buffer)gl.deleteBuffer(buffer);if(gl&&program)gl.deleteProgram(program);if(gl&&vertex)gl.deleteShader(vertex);if(gl&&fragment)gl.deleteShader(fragment)}catch{/* Context may have been lost during cleanup. */}}
 }
 
-export async function audioProbe(win = globalThis.window) {
+
+/** Binary API support matrix; intentionally avoids high-entropy identifiers. */
+export function compatibilityProbe(nav=globalThis.navigator, win=globalThis.window, doc=globalThis.document) {
+  const check=fn=>{try{return Boolean(fn())}catch{return false}};
+  const matrix={
+    canvas2d:check(()=>!!doc?.createElement("canvas").getContext("2d")),
+    webgl1:check(()=>!!doc?.createElement("canvas").getContext("webgl")),
+    webgl2:check(()=>!!doc?.createElement("canvas").getContext("webgl2")),
+    webgpu:check(()=>!!nav?.gpu),
+    offscreenCanvas:typeof win?.OffscreenCanvas==="function",
+    webAssembly:typeof win?.WebAssembly==="object",
+    webWorkers:typeof win?.Worker==="function",
+    sharedArrayBuffer:typeof win?.SharedArrayBuffer==="function",
+    resizeObserver:typeof win?.ResizeObserver==="function",
+    intersectionObserver:typeof win?.IntersectionObserver==="function",
+    audioContext:typeof win?.AudioContext==="function"||typeof win?.webkitAudioContext==="function",
+    serviceWorker:!!nav?.serviceWorker
+  };
+  return {matrix,supported:Object.values(matrix).filter(Boolean).length,total:Object.keys(matrix).length,digest:fnv1a(stableStringify(matrix)),note:"Feature availability only; no cross-browser test has been run."};
+}
+\nexport async function audioProbe(win = globalThis.window) {
   const Offline = win?.OfflineAudioContext || win?.webkitOfflineAudioContext;
   if (!Offline) return { available: false, digest: null, summary: null, reason: "OfflineAudioContext unavailable" };
   try {
@@ -140,10 +160,10 @@ export async function audioProbe(win = globalThis.window) {
   } catch (error) { return { available: false, digest: null, summary: null, reason: error instanceof Error ? error.message : "Audio rendering failed" }; }
 }
 export async function runDiagnostics() {
-  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), gpuRendering = webglRenderingProbe(), audio = await audioProbe(), benchmark = benchmarkProbe();
+  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), gpuRendering = webglRenderingProbe(), audio = await audioProbe(), benchmark = benchmarkProbe(), compatibility = compatibilityProbe();
   const results = { canvas: { digest: canvas.digest, available: canvas.available, reason: canvas.reason ?? null }, webgl: { digest: fnv1a(stableStringify(webgl)), available: webgl.available, reason: webgl.reason ?? null },
-    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true }, benchmark: { digest: benchmark.digest, available: benchmark.available }, gpuRendering: { digest: fnv1a(stableStringify(gpuRendering)), available: gpuRendering.available, reason: gpuRendering.reason ?? null } };
-  return { schemaVersion: 3, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio, benchmark, gpuRendering }, results };
+    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true }, benchmark: { digest: benchmark.digest, available: benchmark.available }, gpuRendering: { digest: fnv1a(stableStringify(gpuRendering)), available: gpuRendering.available, reason: gpuRendering.reason ?? null }, compatibility: { digest: compatibility.digest, available: true } };
+  return { schemaVersion: 3, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio, benchmark, gpuRendering, compatibility }, results };
 }
 
 
@@ -156,7 +176,7 @@ export function validateSnapshot(value) {
   if (!value.environment || typeof value.environment !== "object" || Array.isArray(value.environment)) return false;
   if (!value.probes || typeof value.probes !== "object" || Array.isArray(value.probes)) return false;
   if (!value.results || typeof value.results !== "object" || Array.isArray(value.results)) return false;
-  const allowed = new Set(value.schemaVersion === 1 ? ["canvas", "webgl", "audio", "environment"] : value.schemaVersion === 2 ? ["canvas", "webgl", "audio", "environment", "benchmark"] : ["canvas", "webgl", "audio", "environment", "benchmark", "gpuRendering"]);
+  const allowed = new Set(value.schemaVersion === 1 ? ["canvas", "webgl", "audio", "environment"] : value.schemaVersion === 2 ? ["canvas", "webgl", "audio", "environment", "benchmark"] : ["canvas", "webgl", "audio", "environment", "benchmark", "gpuRendering", "compatibility"]);
   const keys = Object.keys(value.results);
   if (keys.length !== allowed.size || keys.some(key => !allowed.has(key))) return false;
   return keys.every(key => {
