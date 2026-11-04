@@ -97,8 +97,10 @@ $("import-file").addEventListener("change", async event => {
   try {
     const parsed = JSON.parse(await file.text());
     if (!validateSnapshot(parsed)) throw new Error("Unsupported or malformed diagnostics snapshot");
-    const history = readHistory().filter(item => item.id !== parsed.id);
-    if (!writeHistory([parsed, ...history])) parsed.storageWarning = true;
+    const history = readHistory();
+    if (history[0]) parsed.comparison = compareSnapshots(history[0], parsed);
+    const deduplicated = history.filter(item => item.id !== parsed.id);
+    if (!writeHistory([parsed, ...deduplicated])) parsed.storageWarning = true;
     showSnapshot(parsed);
     renderHistory();
     $("overall-status").textContent = "Imported snapshot successfully";
