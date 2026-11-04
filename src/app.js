@@ -67,7 +67,12 @@ function showSnapshot(snapshot) {
   addSummaryRow(summary, "Timestamp", Number.isFinite(Date.parse(snapshot.timestamp)) ? new Date(snapshot.timestamp).toLocaleString() : "Unknown");
   addSummaryRow(summary, "Available probes", available + " of 4");
   addSummaryRow(summary, "Canvas digest", results.canvas?.digest, true);
-  addSummaryRow(summary, "WebGL API", short(probes.webgl?.version, 42), true);
+  addSummaryRow(summary, "WebGL API", short(probes.webgl?.api + " · " + probes.webgl?.version, 42), true);
+  addSummaryRow(summary, "GLSL", probes.webgl?.shadingLanguage ?? "Unavailable", true);
+  addSummaryRow(summary, "Supported extensions", probes.webgl?.extensionCount ?? 0);
+  addSummaryRow(summary, "GPU texture limit", probes.webgl?.limits?.maxTextureSize ?? "Unavailable");
+  addSummaryRow(summary, "MSAA samples", probes.webgl?.limits?.maxSamples ?? "Not exposed");
+  addSummaryRow(summary, "Antialiasing", probes.webgl?.contextAttributes?.antialias === undefined ? "Unavailable" : String(probes.webgl.contextAttributes.antialias));
   if (probes.benchmark?.workloads) {
     for (const [name, result] of Object.entries(probes.benchmark.workloads)) {
       addSummaryRow(summary, "Benchmark · " + name, result.available ? result.medianMs + " ms median · " + result.operationsPerSecond + " ops/s" : result.reason);
