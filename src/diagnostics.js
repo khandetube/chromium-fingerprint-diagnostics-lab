@@ -178,7 +178,7 @@ export async function contextLifecycleProbe(doc=globalThis.document, timeoutMs=1
     return {available:lostEvent&&restoredEvent,extensionSupported:true,lostEvent,restoredEvent,contextLostAfterRestore:gl.isContextLost(),reason:restoredEvent?null:"Context-restored event timed out"};
   }catch(error){return {available:false,extensionSupported:Boolean(gl),lostEvent:false,restoredEvent:false,reason:error instanceof Error?error.message:"Context lifecycle test failed"}}
 }
-\nexport async function audioProbe(win = globalThis.window) {
+export async function audioProbe(win = globalThis.window) {
   const Offline = win?.OfflineAudioContext || win?.webkitOfflineAudioContext;
   if (!Offline) return { available: false, digest: null, summary: null, reason: "OfflineAudioContext unavailable" };
   try {
