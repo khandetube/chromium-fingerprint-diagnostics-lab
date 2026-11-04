@@ -6,7 +6,7 @@ A transparent, local-first browser diagnostics and privacy research workbench. I
 
 ## Current capabilities
 - Canvas 2D rendering consistency probe (records a digest of a deterministic test image).
-- WebGL capability and renderer metadata inspection, where the browser exposes it.
+- WebGL 1/2 capability inventory: limits, GLSL precision, context attributes, supported extensions, and browser-exposed renderer metadata.
 - Web Audio API availability and offline-render consistency probe.
 - Browser/runtime environment inventory with permission-conscious feature detection.
 - Timestamped local snapshots, side-by-side comparison, JSON import/export with structural validation.\n- Local JavaScript microbenchmarks for numeric, array, and serialization workloads (median latency and throughput).
