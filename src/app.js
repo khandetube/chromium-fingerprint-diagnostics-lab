@@ -58,7 +58,7 @@ function showSnapshot(snapshot) {
   for (const [key, data] of Object.entries(mapping)) {
     const result = results[key] ?? { available: false, digest: null };
     setStatus(key, result.available ? "PASS" : "UNAVAILABLE");
-    const display = result.digest ?? (key === "webgl" ? data.version : key === "environment" ? Object.values(env.features ?? {}).filter(Boolean).length + " features" : "Not available");
+    const display = result.digest ?? (result.available ? (key === "webgl" ? data.version : key === "environment" ? Object.values(env.features ?? {}).filter(Boolean).length + " features" : "Not available") : (result.reason ?? "Not available"));
     $(key + "-result").textContent = short(display);
   }
   const available = Object.values(results).filter(x => x?.available).length, summary = $("run-summary");
