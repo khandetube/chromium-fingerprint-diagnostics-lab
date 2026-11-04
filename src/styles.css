@@ -6,3 +6,7 @@
 
 .report-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 @media(max-width:520px){.report-actions{justify-content:flex-end}.report-actions .button{padding:9px 10px;font-size:10px}}
+
+.benchmark-card{grid-column:span 2}
+@media(max-width:850px){.benchmark-card{grid-column:span 2}}
+@media(max-width:520px){.benchmark-card{grid-column:span 2}}
