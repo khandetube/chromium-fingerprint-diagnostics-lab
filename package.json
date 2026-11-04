@@ -1,0 +1,14 @@
+{
+  "name": "chromium-fingerprint-diagnostics-lab",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Local-first browser API diagnostics and reproducibility workbench",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/diagnostics.js && node --check src/app.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
