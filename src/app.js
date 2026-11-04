@@ -54,7 +54,7 @@ function showSnapshot(snapshot) {
   $("platform-summary").textContent = env.platform ?? "Unavailable";
   $("language-summary").textContent = env.language ?? "Unavailable";
   $("cores-summary").textContent = env.hardwareConcurrency ?? "Not exposed";
-  const mapping = { gpuRendering: probes.gpuRendering ?? {}, canvas: probes.canvas ?? {}, webgl: probes.webgl ?? {}, audio: probes.audio ?? {}, environment: env, benchmark: probes.benchmark ?? {}, gpuRendering: probes.gpuRendering ?? {} };
+  const mapping = { gpuRendering: probes.gpuRendering ?? {}, compatibility: probes.compatibility ?? {}, canvas: probes.canvas ?? {}, webgl: probes.webgl ?? {}, audio: probes.audio ?? {}, environment: env, benchmark: probes.benchmark ?? {} };
   for (const [key, data] of Object.entries(mapping)) {
     const result = results[key] ?? { available: false, digest: null };
     setStatus(key, result.available ? "PASS" : "UNAVAILABLE");
@@ -68,6 +68,7 @@ function showSnapshot(snapshot) {
   addSummaryRow(summary, "Available probes", available + " of " + Object.keys(results).length);
   addSummaryRow(summary, "Canvas digest", results.canvas?.digest, true);
   addSummaryRow(summary, "WebGL API", short(probes.webgl?.api + " · " + probes.webgl?.version, 42), true);
+  addSummaryRow(summary, "API compatibility", probes.compatibility ? probes.compatibility.supported + " / " + probes.compatibility.total + " available" : "Not tested");
   addSummaryRow(summary, "GPU draw/readback", probes.gpuRendering?.drawReadback === undefined ? "Not tested" : String(probes.gpuRendering.drawReadback));
   addSummaryRow(summary, "Context lost", probes.gpuRendering?.contextLost === null || probes.gpuRendering?.contextLost === undefined ? "Unknown" : String(probes.gpuRendering.contextLost));
   addSummaryRow(summary, "GLSL", probes.webgl?.shadingLanguage ?? "Unavailable", true);
