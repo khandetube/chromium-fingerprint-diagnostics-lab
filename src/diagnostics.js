@@ -148,6 +148,37 @@ export function compatibilityProbe(nav=globalThis.navigator, win=globalThis.wind
   };
   return {matrix,supported:Object.values(matrix).filter(Boolean).length,total:Object.keys(matrix).length,digest:fnv1a(stableStringify(matrix)),note:"Feature availability only; no cross-browser test has been run."};
 }
+\n
+/**
+ * Exercises context loss/restoration only on a disposable canvas created for this
+ * test. The primary diagnostics canvas is never affected. Each wait is bounded.
+ */
+export async function contextLifecycleProbe(doc=globalThis.document, timeoutMs=1200) {
+  if(!doc?.createElement)return {available:false,extensionSupported:false,lostEvent:false,restoredEvent:false,reason:"document unavailable"};
+  let gl;
+  try{
+    const canvas=doc.createElement("canvas");
+    gl=canvas.getContext("webgl2")||canvas.getContext("webgl");
+    if(!gl)return {available:false,extensionSupported:false,lostEvent:false,restoredEvent:false,reason:"WebGL unavailable"};
+    const extension=gl.getExtension("WEBGL_lose_context");
+    if(!extension)return {available:false,extensionSupported:false,lostEvent:false,restoredEvent:false,reason:"WEBGL_lose_context extension unavailable"};
+    const waitFor=(eventName)=>new Promise(resolve=>{
+      let settled=false;
+      const finish=value=>{if(settled)return;settled=true;canvas.removeEventListener(eventName,onEvent);clearTimeout(timer);resolve(value)};
+      const onEvent=event=>{if(eventName==="webglcontextlost")event.preventDefault?.();finish(true)};
+      const timer=setTimeout(()=>finish(false),Math.max(100,Math.min(2000,timeoutMs)));
+      canvas.addEventListener(eventName,onEvent,{once:true});
+    });
+    const lost=waitFor("webglcontextlost");
+    extension.loseContext();
+    const lostEvent=await lost;
+    if(!lostEvent)return {available:false,extensionSupported:true,lostEvent:false,restoredEvent:false,reason:"Context-lost event timed out"};
+    const restored=waitFor("webglcontextrestored");
+    extension.restoreContext();
+    const restoredEvent=await restored;
+    return {available:lostEvent&&restoredEvent,extensionSupported:true,lostEvent,restoredEvent,contextLostAfterRestore:gl.isContextLost(),reason:restoredEvent?null:"Context-restored event timed out"};
+  }catch(error){return {available:false,extensionSupported:Boolean(gl),lostEvent:false,restoredEvent:false,reason:error instanceof Error?error.message:"Context lifecycle test failed"}}
+}
 \nexport async function audioProbe(win = globalThis.window) {
   const Offline = win?.OfflineAudioContext || win?.webkitOfflineAudioContext;
   if (!Offline) return { available: false, digest: null, summary: null, reason: "OfflineAudioContext unavailable" };
@@ -160,10 +191,10 @@ export function compatibilityProbe(nav=globalThis.navigator, win=globalThis.wind
   } catch (error) { return { available: false, digest: null, summary: null, reason: error instanceof Error ? error.message : "Audio rendering failed" }; }
 }
 export async function runDiagnostics() {
-  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), gpuRendering = webglRenderingProbe(), audio = await audioProbe(), benchmark = benchmarkProbe(), compatibility = compatibilityProbe();
+  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), gpuRendering = webglRenderingProbe(), audio = await audioProbe(), benchmark = benchmarkProbe(), compatibility = compatibilityProbe(), contextLifecycle = await contextLifecycleProbe();
   const results = { canvas: { digest: canvas.digest, available: canvas.available, reason: canvas.reason ?? null }, webgl: { digest: fnv1a(stableStringify(webgl)), available: webgl.available, reason: webgl.reason ?? null },
-    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true }, benchmark: { digest: benchmark.digest, available: benchmark.available }, gpuRendering: { digest: fnv1a(stableStringify(gpuRendering)), available: gpuRendering.available, reason: gpuRendering.reason ?? null }, compatibility: { digest: compatibility.digest, available: true } };
-  return { schemaVersion: 3, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio, benchmark, gpuRendering, compatibility }, results };
+    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true }, benchmark: { digest: benchmark.digest, available: benchmark.available }, gpuRendering: { digest: fnv1a(stableStringify(gpuRendering)), available: gpuRendering.available, reason: gpuRendering.reason ?? null }, compatibility: { digest: compatibility.digest, available: true }, contextLifecycle: { digest: fnv1a(stableStringify(contextLifecycle)), available: contextLifecycle.available, reason: contextLifecycle.reason ?? null } };
+  return { schemaVersion: 3, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio, benchmark, gpuRendering, compatibility, contextLifecycle }, results };
 }
 
 
@@ -176,7 +207,7 @@ export function validateSnapshot(value) {
   if (!value.environment || typeof value.environment !== "object" || Array.isArray(value.environment)) return false;
   if (!value.probes || typeof value.probes !== "object" || Array.isArray(value.probes)) return false;
   if (!value.results || typeof value.results !== "object" || Array.isArray(value.results)) return false;
-  const allowed = new Set(value.schemaVersion === 1 ? ["canvas", "webgl", "audio", "environment"] : value.schemaVersion === 2 ? ["canvas", "webgl", "audio", "environment", "benchmark"] : ["canvas", "webgl", "audio", "environment", "benchmark", "gpuRendering", "compatibility"]);
+  const allowed = new Set(value.schemaVersion === 1 ? ["canvas", "webgl", "audio", "environment"] : value.schemaVersion === 2 ? ["canvas", "webgl", "audio", "environment", "benchmark"] : ["canvas", "webgl", "audio", "environment", "benchmark", "gpuRendering", "compatibility", "contextLifecycle"]);
   const keys = Object.keys(value.results);
   if (keys.length !== allowed.size || keys.some(key => !allowed.has(key))) return false;
   return keys.every(key => {
