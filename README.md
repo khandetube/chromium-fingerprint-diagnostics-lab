@@ -44,3 +44,15 @@ This is an independent browser-level diagnostics project. It is **not** a Chromi
 
 ## License
 MIT — see [LICENSE](LICENSE).
+
+
+## Live demo deployment
+
+This repository includes a GitHub Actions workflow for publishing the static dashboard with GitHub Pages. To activate it, open **Settings → Pages → Build and deployment**, select **GitHub Actions** as the source, then push to `main` or run the deployment workflow manually. The public demo will be available at `https://khandetube.github.io/chromium-fingerprint-diagnostics-lab/` after the first successful deployment. Until the workflow completes successfully, treat that address as a target URL rather than a verified live demo.
+
+## Current scope and limitations
+
+- This is a browser-side diagnostic workbench plus a standalone C++17 numeric-summary utility.
+- It does **not** currently patch Chromium/Blink source or constitute a completed custom Android ARM64 Chromium build.
+- Hashes are compact comparison signals, not cryptographic attestations or unique-device identifiers.
+- Some browser APIs are intentionally restricted; unavailable measurements are reported rather than bypassed.
