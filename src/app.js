@@ -54,7 +54,7 @@ function showSnapshot(snapshot) {
   $("platform-summary").textContent = env.platform ?? "Unavailable";
   $("language-summary").textContent = env.language ?? "Unavailable";
   $("cores-summary").textContent = env.hardwareConcurrency ?? "Not exposed";
-  const mapping = { canvas: probes.canvas ?? {}, webgl: probes.webgl ?? {}, audio: probes.audio ?? {}, environment: env, benchmark: probes.benchmark ?? {} };
+  const mapping = { gpuRendering: probes.gpuRendering ?? {}, canvas: probes.canvas ?? {}, webgl: probes.webgl ?? {}, audio: probes.audio ?? {}, environment: env, benchmark: probes.benchmark ?? {}, gpuRendering: probes.gpuRendering ?? {} };
   for (const [key, data] of Object.entries(mapping)) {
     const result = results[key] ?? { available: false, digest: null };
     setStatus(key, result.available ? "PASS" : "UNAVAILABLE");
@@ -65,9 +65,11 @@ function showSnapshot(snapshot) {
   $("overall-status").textContent = available + " / " + Object.keys(results).length + " modules available"; summary.replaceChildren();
   addSummaryRow(summary, "Run ID", snapshot.id, true);
   addSummaryRow(summary, "Timestamp", Number.isFinite(Date.parse(snapshot.timestamp)) ? new Date(snapshot.timestamp).toLocaleString() : "Unknown");
-  addSummaryRow(summary, "Available probes", available + " of 4");
+  addSummaryRow(summary, "Available probes", available + " of " + Object.keys(results).length);
   addSummaryRow(summary, "Canvas digest", results.canvas?.digest, true);
   addSummaryRow(summary, "WebGL API", short(probes.webgl?.api + " · " + probes.webgl?.version, 42), true);
+  addSummaryRow(summary, "GPU draw/readback", probes.gpuRendering?.drawReadback === undefined ? "Not tested" : String(probes.gpuRendering.drawReadback));
+  addSummaryRow(summary, "Context lost", probes.gpuRendering?.contextLost === null || probes.gpuRendering?.contextLost === undefined ? "Unknown" : String(probes.gpuRendering.contextLost));
   addSummaryRow(summary, "GLSL", probes.webgl?.shadingLanguage ?? "Unavailable", true);
   addSummaryRow(summary, "Supported extensions", probes.webgl?.extensionCount ?? 0);
   addSummaryRow(summary, "GPU texture limit", probes.webgl?.limits?.maxTextureSize ?? "Unavailable");
