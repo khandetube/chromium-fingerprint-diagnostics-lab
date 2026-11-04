@@ -88,6 +88,46 @@ export function webglProbe(doc = globalThis.document) {
   }catch(error){return unavailable(error instanceof Error?error.message:"WebGL capability probe failed")}
 }
 
+/**
+ * Executes a minimal WebGL draw/readback validation. It does not force context loss
+ * or alter browser settings; it checks the context lifecycle state exposed by the API.
+ */
+export function webglRenderingProbe(doc = globalThis.document) {
+  const unavailable = reason => ({ available:false, shaderCompile:false, programLink:false, framebufferComplete:null, drawReadback:false, contextLost:null, reason });
+  if (!doc?.createElement) return unavailable("document unavailable");
+  let gl, program, vertex, fragment, buffer;
+  try {
+    const canvas=doc.createElement("canvas"); canvas.width=16; canvas.height=16;
+    gl=canvas.getContext("webgl2")||canvas.getContext("webgl");
+    if(!gl)return unavailable("WebGL context unavailable");
+    const contextLost=()=>{try{return gl.isContextLost()}catch{return null}};
+    if(contextLost())return {...unavailable("WebGL context is already lost"),contextLost:true};
+    const shader=(type,source)=>{
+      const item=gl.createShader(type); if(!item)throw new Error("Unable to allocate shader");
+      gl.shaderSource(item,source); gl.compileShader(item);
+      if(!gl.getShaderParameter(item,gl.COMPILE_STATUS)){const log=gl.getShaderInfoLog(item)||"Shader compilation failed";gl.deleteShader(item);throw new Error(log)}
+      return item;
+    };
+    const webgl2=typeof gl.createVertexArray==="function";
+    const vertexSource=webgl2?"#version 300 es\nin vec2 position;\nvoid main(){gl_Position=vec4(position,0.0,1.0);}":"attribute vec2 position;\nvoid main(){gl_Position=vec4(position,0.0,1.0);}";
+    const fragmentSource=webgl2?"#version 300 es\nprecision mediump float;\nout vec4 color;\nvoid main(){color=vec4(0.2,0.7,0.4,1.0);}":"precision mediump float;\nvoid main(){gl_FragColor=vec4(0.2,0.7,0.4,1.0);}";
+    vertex=shader(gl.VERTEX_SHADER,vertexSource); fragment=shader(gl.FRAGMENT_SHADER,fragmentSource);
+    program=gl.createProgram(); if(!program)throw new Error("Unable to allocate program");
+    gl.attachShader(program,vertex);gl.attachShader(program,fragment);gl.bindAttribLocation(program,0,"position");gl.linkProgram(program);
+    if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program)||"Program link failed");
+    buffer=gl.createBuffer();if(!buffer)throw new Error("Unable to allocate vertex buffer");
+    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    gl.viewport(0,0,16,16);gl.useProgram(program);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+    gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT);gl.drawArrays(gl.TRIANGLES,0,3);
+    const pixel=new Uint8Array(4);gl.readPixels(8,8,1,1,gl.RGBA,gl.UNSIGNED_BYTE,pixel);
+    const error=gl.getError();
+    const drawReadback=error===gl.NO_ERROR && pixel[1]>0;
+    const lost=contextLost();
+    return {available:!lost,shaderCompile:true,programLink:true,framebufferComplete:null,drawReadback,centerPixel:Array.from(pixel),glError:error,contextLost:lost,reason:lost?"Context lost during rendering":drawReadback?null:"Draw/readback validation failed"};
+  }catch(error){return {...unavailable(error instanceof Error?error.message:"WebGL rendering validation failed"),contextLost:gl?(()=>{try{return gl.isContextLost()}catch{return null}})():null}}
+  finally{try{if(gl&&buffer)gl.deleteBuffer(buffer);if(gl&&program)gl.deleteProgram(program);if(gl&&vertex)gl.deleteShader(vertex);if(gl&&fragment)gl.deleteShader(fragment)}catch{/* Context may have been lost during cleanup. */}}
+}
+
 export async function audioProbe(win = globalThis.window) {
   const Offline = win?.OfflineAudioContext || win?.webkitOfflineAudioContext;
   if (!Offline) return { available: false, digest: null, summary: null, reason: "OfflineAudioContext unavailable" };
@@ -100,23 +140,23 @@ export async function audioProbe(win = globalThis.window) {
   } catch (error) { return { available: false, digest: null, summary: null, reason: error instanceof Error ? error.message : "Audio rendering failed" }; }
 }
 export async function runDiagnostics() {
-  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), audio = await audioProbe(), benchmark = benchmarkProbe();
+  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), gpuRendering = webglRenderingProbe(), audio = await audioProbe(), benchmark = benchmarkProbe();
   const results = { canvas: { digest: canvas.digest, available: canvas.available, reason: canvas.reason ?? null }, webgl: { digest: fnv1a(stableStringify(webgl)), available: webgl.available, reason: webgl.reason ?? null },
-    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true }, benchmark: { digest: benchmark.digest, available: benchmark.available } };
-  return { schemaVersion: 2, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio, benchmark }, results };
+    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true }, benchmark: { digest: benchmark.digest, available: benchmark.available }, gpuRendering: { digest: fnv1a(stableStringify(gpuRendering)), available: gpuRendering.available, reason: gpuRendering.reason ?? null } };
+  return { schemaVersion: 3, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio, benchmark, gpuRendering }, results };
 }
 
 
 /** Structural validation for imported snapshots; not an authenticity check. */
 export function validateSnapshot(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  if (value.schemaVersion !== 1 && value.schemaVersion !== 2) return false;
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2 && value.schemaVersion !== 3) return false;
   if (typeof value.id !== "string" || value.id.length < 1 || value.id.length > 128) return false;
   if (typeof value.timestamp !== "string" || !Number.isFinite(Date.parse(value.timestamp))) return false;
   if (!value.environment || typeof value.environment !== "object" || Array.isArray(value.environment)) return false;
   if (!value.probes || typeof value.probes !== "object" || Array.isArray(value.probes)) return false;
   if (!value.results || typeof value.results !== "object" || Array.isArray(value.results)) return false;
-  const allowed = new Set(value.schemaVersion === 1 ? ["canvas", "webgl", "audio", "environment"] : ["canvas", "webgl", "audio", "environment", "benchmark"]);
+  const allowed = new Set(value.schemaVersion === 1 ? ["canvas", "webgl", "audio", "environment"] : value.schemaVersion === 2 ? ["canvas", "webgl", "audio", "environment", "benchmark"] : ["canvas", "webgl", "audio", "environment", "benchmark", "gpuRendering"]);
   const keys = Object.keys(value.results);
   if (keys.length !== allowed.size || keys.some(key => !allowed.has(key))) return false;
   return keys.every(key => {
