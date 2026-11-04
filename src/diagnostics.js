@@ -148,7 +148,6 @@ export function compatibilityProbe(nav=globalThis.navigator, win=globalThis.wind
   };
   return {matrix,supported:Object.values(matrix).filter(Boolean).length,total:Object.keys(matrix).length,digest:fnv1a(stableStringify(matrix)),note:"Feature availability only; no cross-browser test has been run."};
 }
-\n
 /**
  * Exercises context loss/restoration only on a disposable canvas created for this
  * test. The primary diagnostics canvas is never affected. Each wait is bounded.
