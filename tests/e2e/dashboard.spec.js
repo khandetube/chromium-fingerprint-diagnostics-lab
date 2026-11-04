@@ -40,8 +40,17 @@ test("diagnostics run, persist a snapshot, and export valid JSON", async ({ page
   const csvDownload = await csvPromise;
   expect(csvDownload.suggestedFilename()).toMatch(/^diagnostics-.+\.csv$/);
   const csvText = await readFile(await csvDownload.path(), "utf8");
-  expect(csvText).toContain("snapshot_id,timestamp,module,available,digest,reason");
+  expect(csvText.replace(/^\\uFEFF/, "")).toContain('"snapshot_id","timestamp","module","available","digest","reason"');
   expect(csvText).toContain("gpuRendering");
+  await expect(page.getByRole("button", { name: /Export HTML/ })).toBeEnabled();
+  const htmlPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Export HTML/ }).click();
+  const htmlDownload = await htmlPromise;
+  expect(htmlDownload.suggestedFilename()).toMatch(/^diagnostics-.+\\.html$/);
+  const reportHtml = await readFile(await htmlDownload.path(), "utf8");
+  expect(reportHtml).toContain("Diagnostics evidence report");
+  expect(reportHtml).toContain("GPU rendering");
+  expect(reportHtml).toContain("non-cryptographic comparison checksums");
 });
 
 test("valid snapshot import succeeds and malformed JSON is rejected", async ({ page }) => {
