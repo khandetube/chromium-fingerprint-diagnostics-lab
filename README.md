@@ -6,7 +6,7 @@ A transparent, local-first browser diagnostics and privacy research workbench. I
 
 ## Current capabilities
 - Canvas 2D rendering consistency probe (records a digest of a deterministic test image).
-- GPU rendering smoke test: shader compilation, program linking, triangle draw, pixel readback, and passive context-loss state checks.\n- WebGL 1/2 capability inventory: limits, GLSL precision, context attributes, supported extensions, and browser-exposed renderer metadata.
+- Browser compatibility matrix for WebGL 1/2, WebGPU, OffscreenCanvas, Workers, WebAssembly, observers, and audio APIs (feature availability, not a browser certification).\n- Disposable-canvas WebGL context-loss and restoration test using `WEBGL_lose_context`; bounded waits and no impact on the primary probe canvas.\n- GPU rendering smoke test: shader compilation, program linking, triangle draw, pixel readback, and passive context-loss state checks.\n- WebGL 1/2 capability inventory: limits, GLSL precision, context attributes, supported extensions, and browser-exposed renderer metadata.
 - Web Audio API availability and offline-render consistency probe.
 - Browser/runtime environment inventory with permission-conscious feature detection.
 - Timestamped local snapshots, side-by-side comparison, JSON import/export with structural validation.\n- Local JavaScript microbenchmarks for numeric, array, and serialization workloads (median latency and throughput).
@@ -52,7 +52,7 @@ This repository includes a GitHub Actions workflow for publishing the static das
 
 ## Current scope and limitations
 
-- This is a browser-side diagnostic workbench plus a standalone C++17 numeric-summary utility.
+- This is a browser-side diagnostic workbench plus a standalone C++17 numeric-summary utility (mean, RMS, standard deviation, zero crossings, and regression digest).
 - It does **not** currently patch Chromium/Blink source or constitute a completed custom Android ARM64 Chromium build.
 - FNV-1a hashes are non-cryptographic comparison checksums. They are not tamper-proof evidence, cryptographic attestations, or unique-device identifiers.
 - Some browser APIs are intentionally restricted; unavailable measurements are reported rather than bypassed.
