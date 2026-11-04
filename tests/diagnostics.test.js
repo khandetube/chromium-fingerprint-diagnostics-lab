@@ -26,3 +26,13 @@ test("collectEnvironment tolerates missing browser globals", () => {
   assert.equal(env.userAgent, "unavailable");
   assert.equal(env.features.canvas2d, false);
 });
+
+test("summarizeArray reports invalid values without corrupting statistics", () => {
+  const result = summarizeArray([1, Number.NaN, 3, Infinity]);
+  assert.equal(result.validCount, 2);
+  assert.equal(result.invalidCount, 2);
+  assert.equal(result.mean, 2);
+});
+test("compareSnapshots treats missing digests as added or removed", () => {
+  assert.deepEqual(compareSnapshots({results:{}},{results:{canvas:{digest:"abc"}}})[0].status,"added");
+});
