@@ -12,7 +12,7 @@ A transparent, local-first browser diagnostics and privacy research workbench. I
 - WebGL 1/2 capability inventory: limits, GLSL precision, context attributes, supported extensions, and browser-exposed renderer metadata.
 - Web Audio API availability and offline-render consistency probe.
 - Browser/runtime environment inventory with permission-conscious feature detection.
-- Timestamped local snapshots, side-by-side comparison, JSON import/export with structural validation, and CSV evidence export for spreadsheet analysis.
+- Timestamped local snapshots, side-by-side comparison, JSON import/export with structural validation, CSV evidence export for spreadsheet analysis, and a self-contained offline HTML evidence report.
 - Local JavaScript microbenchmarks for numeric, array, and serialization workloads (median latency and throughput).
 - No remote telemetry; results remain in the browser unless the user exports them.
 
@@ -47,7 +47,7 @@ This is an independent browser-level diagnostics project. It is **not** a Chromi
 ## Structure
 - `index.html` — application shell
 - `src/diagnostics.js` — deterministic, browser-safe probes and comparison helpers
-- `src/app.js` — dashboard, snapshots, and report export
+- `src/app.js` — dashboard, snapshots, CSV export, and self-contained HTML/JSON evidence reports
 - `src/styles.css` — responsive interface
 - `tests/` — Node unit tests and Playwright Chromium end-to-end tests
 - `.github/workflows/ci.yml` — automated tests
@@ -66,3 +66,8 @@ This repository includes a GitHub Actions workflow for publishing the static das
 - It does **not** currently patch Chromium/Blink source or constitute a completed custom Android ARM64 Chromium build.
 - FNV-1a hashes are non-cryptographic comparison checksums. They are not tamper-proof evidence, cryptographic attestations, or unique-device identifiers.
 - Some browser APIs are intentionally restricted; unavailable measurements are reported rather than bypassed.
+
+
+## Evidence exports
+
+The dashboard can export the latest snapshot as JSON, a UTF-8 CSV suitable for spreadsheet tools, or a self-contained HTML report that can be opened offline and printed. HTML report fields are escaped before rendering. Reports include explicit interpretation limits: browser-exposed observations only, no unique-device claims, and non-cryptographic FNV-1a digests.
