@@ -83,7 +83,7 @@ function showSnapshot(snapshot) {
     }
   }
   if (snapshot.storageWarning) summary.append(make("p", "storage-warning", "Browser storage is unavailable; this snapshot may not persist after refresh."));
-  renderComparison(snapshot.comparison); $("export-report").disabled = false; $("export-csv").disabled = false;
+  renderComparison(snapshot.comparison); $("export-report").disabled = false; $("export-csv").disabled = false; $("export-html").disabled = false;
 }
 async function run() {
   if (busy) return; busy = true; $("run-all").disabled = true; $("overall-status").textContent = "Running diagnostics…";
@@ -128,6 +128,29 @@ $("export-report").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify(latest, null, 2)], { type: "application/json" }), url = URL.createObjectURL(blob), a = document.createElement("a");
   a.href = url; a.download = "diagnostics-" + String(latest.id ?? "snapshot").slice(0, 8) + ".json"; document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+
+function escapeHtml(value) {
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
+function buildHtmlReport(snapshot) {
+  const env = snapshot.environment ?? {}, results = snapshot.results ?? {}, probes = snapshot.probes ?? {};
+  const rows = Object.entries(results).map(([name, result]) => `<tr><td>${escapeHtml(name)}</td><td>${result?.available ? "Available" : "Unavailable"}</td><td><code>${escapeHtml(result?.digest ?? "—")}</code></td><td>${escapeHtml(result?.reason ?? probes[name]?.reason ?? "—")}</td></tr>`).join("");
+  const section = (title, value) => `<section><h2>${escapeHtml(title)}</h2><pre>${escapeHtml(JSON.stringify(value ?? {}, null, 2))}</pre></section>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Browser Diagnostics Evidence</title><style>
+  :root{color-scheme:light;font:14px/1.55 system-ui,sans-serif;color:#172033;background:#f4f7fb}body{max-width:1100px;margin:36px auto;padding:0 20px}header,section,.notice{background:#fff;border:1px solid #dbe3ef;border-radius:12px;padding:20px;margin:14px 0}h1{margin:0 0 8px}h2{font-size:17px;margin:0 0 12px}p,.muted{color:#53627a}.notice{border-left:4px solid #3176bb}table{width:100%;border-collapse:collapse;background:white}th,td{text-align:left;padding:10px;border-bottom:1px solid #e5eaf1;vertical-align:top}th{background:#f0f4fa}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f6f8fb;padding:14px;border-radius:8px;font-size:12px}code{overflow-wrap:anywhere}.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.meta div{background:#f5f7fb;padding:12px;border-radius:8px}@media print{body{margin:0;background:white}header,section,.notice{break-inside:avoid;box-shadow:none}}</style></head><body>
+  <header><p class="muted">BROWSER OBSERVABILITY WORKBENCH · OFFLINE EVIDENCE</p><h1>Diagnostics evidence report</h1><div class="meta"><div><b>Snapshot</b><br>${escapeHtml(snapshot.id)}</div><div><b>Timestamp</b><br>${escapeHtml(snapshot.timestamp)}</div><div><b>Browser</b><br>${escapeHtml(env.userAgent ?? "Unavailable")}</div><div><b>Platform</b><br>${escapeHtml(env.platform ?? "Unavailable")}</div></div></header>
+  <div class="notice"><b>Interpretation:</b> This report records browser-exposed diagnostic results for one session. It is not a unique device identifier, cryptographic attestation, browser certification, or proof of tampering. FNV-1a digests are non-cryptographic comparison checksums.</div>
+  <section><h2>Module results</h2><table><thead><tr><th>Module</th><th>Status</th><th>Digest</th><th>Reason / notes</th></tr></thead><tbody>${rows}</tbody></table></section>
+  ${section("Environment", env)}${section("Probe details", probes)}${section("Result metadata", results)}${section("Comparison with previous snapshot", snapshot.comparison ?? [])}
+  <p class="muted">Generated locally by Chromium Fingerprint Diagnostics Lab. No telemetry or remote upload is performed by this report generator.</p></body></html>`;
+}
+$("export-html").addEventListener("click", () => {
+  if (!latest) return;
+  const blob = new Blob([buildHtmlReport(latest)], { type: "text/html;charset=utf-8" }), url = URL.createObjectURL(blob), link = document.createElement("a");
+  link.href = url; link.download = "diagnostics-" + String(latest.id ?? "snapshot").slice(0, 8) + ".html";
+  document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 function csvCell(value) {
