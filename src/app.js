@@ -1,4 +1,4 @@
-import { runDiagnostics, compareSnapshots } from "./diagnostics.js";
+import { runDiagnostics, compareSnapshots, validateSnapshot } from "./diagnostics.js";
 const $ = id => document.getElementById(id);
 const STORAGE_KEY = "diagnostics-lab:snapshots:v1";
 let latest = null, busy = false, volatileHistory = [];
@@ -84,6 +84,29 @@ async function run() {
   } finally { busy = false; $("run-all").disabled = false; }
 }
 $("run-all").addEventListener("click", run);
+
+$("import-report").addEventListener("click", () => $("import-file").click());
+$("import-file").addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  if (file.size > 1024 * 1024) {
+    $("overall-status").textContent = "Import rejected: file exceeds 1 MB";
+    return;
+  }
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (!validateSnapshot(parsed)) throw new Error("Unsupported or malformed diagnostics snapshot");
+    const history = readHistory().filter(item => item.id !== parsed.id);
+    if (!writeHistory([parsed, ...history])) parsed.storageWarning = true;
+    showSnapshot(parsed);
+    renderHistory();
+    $("overall-status").textContent = "Imported snapshot successfully";
+  } catch (error) {
+    $("overall-status").textContent = "Import failed: " + (error instanceof Error ? error.message : String(error));
+  }
+});
+
 $("export-report").addEventListener("click", () => {
   if (!latest) return;
   const blob = new Blob([JSON.stringify(latest, null, 2)], { type: "application/json" }), url = URL.createObjectURL(blob), a = document.createElement("a");
