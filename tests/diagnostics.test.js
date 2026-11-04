@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot, benchmarkProbe, webglRenderingProbe, compatibilityProbe } from "../src/diagnostics.js";
+import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot, benchmarkProbe, webglRenderingProbe, compatibilityProbe, contextLifecycleProbe } from "../src/diagnostics.js";
 
 test("stableStringify sorts object keys recursively", () => {
   assert.equal(stableStringify({ z: 1, a: { y: 2, b: 3 } }), '{"a":{"b":3,"y":2},"z":1}');
@@ -155,9 +155,15 @@ test("compatibilityProbe returns a bounded binary API matrix", () => {
   assert.equal(typeof matrix.digest,"string");
 });
 test("schema version 3 requires GPU and compatibility evidence modules", () => {
-  const keys=["canvas","webgl","audio","environment","benchmark","gpuRendering","compatibility"];
+  const keys=["canvas","webgl","audio","environment","benchmark","gpuRendering","compatibility","contextLifecycle"];
   const snapshot={schemaVersion:3,id:"v3",timestamp:"2026-11-04T00:00:00.000Z",environment:{},probes:{},results:Object.fromEntries(keys.map(key=>[key,{available:true,digest:"abc"}]))};
   assert.equal(validateSnapshot(snapshot),true);
   delete snapshot.results.compatibility;
   assert.equal(validateSnapshot(snapshot),false);
+});
+
+test("contextLifecycleProbe handles missing WebGL without hanging", async () => {
+  const result=await contextLifecycleProbe({createElement:()=>({getContext:()=>null})});
+  assert.equal(result.available,false);
+  assert.match(result.reason,/WebGL unavailable/);
 });
