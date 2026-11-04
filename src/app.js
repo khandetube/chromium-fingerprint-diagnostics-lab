@@ -129,6 +129,23 @@ $("export-report").addEventListener("click", () => {
   a.href = url; a.download = "diagnostics-" + String(latest.id ?? "snapshot").slice(0, 8) + ".json"; document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
+
+function csvCell(value) {
+  const text = value === null || value === undefined ? "" : typeof value === "object" ? JSON.stringify(value) : String(value);
+  return '"' + text.replaceAll('"', '""') + '"';
+}
+$("export-csv").addEventListener("click", () => {
+  if (!latest) return;
+  const rows = [["snapshot_id", "timestamp", "module", "available", "digest", "reason"]];
+  for (const [module, result] of Object.entries(latest.results ?? {})) {
+    const probe = latest.probes?.[module] ?? {};
+    rows.push([latest.id, latest.timestamp, module, result?.available ?? false, result?.digest ?? "", result?.reason ?? probe.reason ?? ""]);
+  }
+  const csv = "\uFEFF" + rows.map(row => row.map(csvCell).join(",")).join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" }), url = URL.createObjectURL(blob), link = document.createElement("a");
+  link.href = url; link.download = "diagnostics-" + String(latest.id ?? "snapshot").slice(0, 8) + ".csv";
+  document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
 $("clear-history").addEventListener("click", () => {
   volatileHistory = []; try { localStorage.removeItem(STORAGE_KEY); } catch { /* Storage may be blocked by browser policy. */ } renderHistory();
 });
