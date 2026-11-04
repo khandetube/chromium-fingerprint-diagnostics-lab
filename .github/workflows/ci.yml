@@ -17,7 +17,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Syntax check
+      - name: Set up CMake and C++
+        run: sudo apt-get update && sudo apt-get install -y cmake g++
+      - name: JavaScript syntax check
         run: npm run check
-      - name: Unit tests
+      - name: JavaScript unit tests
         run: npm test
+      - name: Build native utility
+        run: cmake -S native/cpp -B build/native -DCMAKE_BUILD_TYPE=Release
+      - name: Compile native smoke test
+        run: c++ -std=c++17 -Wall -Wextra -Wpedantic -Werror native/cpp/signal_summary.cpp native/cpp/signal_summary_test.cpp -o build/native/signal_summary_test
+      - name: Run native smoke test
+        run: ./build/native/signal_summary_test
