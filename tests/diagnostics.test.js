@@ -38,7 +38,7 @@ test("compareSnapshots treats missing digests as added or removed", () => {
 });
 
 test("canvasProbe returns a structured unavailable result when pixel readback is blocked", () => {
-  const doc = { createElement: () => ({ getContext: () => ({ fillRect(){}, fillText(){}, beginPath(){}, arc(){}, getImageData(){ throw new Error("readback blocked"); } }) }) };
+  const doc = { createElement: () => ({ getContext: () => ({ fillRect(){}, fillText(){}, beginPath(){}, arc(){}, fill(){}, getImageData(){ throw new Error("readback blocked"); } }) }) };
   const result = canvasProbe(doc); assert.equal(result.available, false); assert.match(result.reason, /readback blocked/);
 });
 test("webglProbe reports missing contexts without throwing", () => {
