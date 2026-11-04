@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot, benchmarkProbe, webglRenderingProbe } from "../src/diagnostics.js";
+import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot, benchmarkProbe, webglRenderingProbe, compatibilityProbe } from "../src/diagnostics.js";
 
 test("stableStringify sorts object keys recursively", () => {
   assert.equal(stableStringify({ z: 1, a: { y: 2, b: 3 } }), '{"a":{"b":3,"y":2},"z":1}');
@@ -144,4 +144,20 @@ test("webglRenderingProbe compiles, links, draws and reads a pixel", () => {
   assert.equal(result.programLink,true);
   assert.equal(result.drawReadback,true);
   assert.deepEqual(result.centerPixel,[20,180,80,255]);
+});
+
+test("compatibilityProbe returns a bounded binary API matrix", () => {
+  const matrix=compatibilityProbe({serviceWorker:{}},{Worker:function(){},WebAssembly:{},OffscreenCanvas:function(){}},{createElement:()=>({getContext:type=>type==="2d"?{}:null})});
+  assert.equal(matrix.matrix.webWorkers,true);
+  assert.equal(matrix.matrix.webgl1,false);
+  assert.equal(matrix.matrix.canvas2d,true);
+  assert.equal(matrix.total,Object.keys(matrix.matrix).length);
+  assert.equal(typeof matrix.digest,"string");
+});
+test("schema version 3 requires GPU and compatibility evidence modules", () => {
+  const keys=["canvas","webgl","audio","environment","benchmark","gpuRendering","compatibility"];
+  const snapshot={schemaVersion:3,id:"v3",timestamp:"2026-11-04T00:00:00.000Z",environment:{},probes:{},results:Object.fromEntries(keys.map(key=>[key,{available:true,digest:"abc"}]))};
+  assert.equal(validateSnapshot(snapshot),true);
+  delete snapshot.results.compatibility;
+  assert.equal(validateSnapshot(snapshot),false);
 });
