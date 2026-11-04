@@ -83,7 +83,7 @@ function showSnapshot(snapshot) {
     }
   }
   if (snapshot.storageWarning) summary.append(make("p", "storage-warning", "Browser storage is unavailable; this snapshot may not persist after refresh."));
-  renderComparison(snapshot.comparison); $("export-report").disabled = false;
+  renderComparison(snapshot.comparison); $("export-report").disabled = false; $("export-csv").disabled = false;
 }
 async function run() {
   if (busy) return; busy = true; $("run-all").disabled = true; $("overall-status").textContent = "Running diagnostics…";
