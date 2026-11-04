@@ -54,7 +54,7 @@ function showSnapshot(snapshot) {
   $("platform-summary").textContent = env.platform ?? "Unavailable";
   $("language-summary").textContent = env.language ?? "Unavailable";
   $("cores-summary").textContent = env.hardwareConcurrency ?? "Not exposed";
-  const mapping = { canvas: probes.canvas ?? {}, webgl: probes.webgl ?? {}, audio: probes.audio ?? {}, environment: env };
+  const mapping = { canvas: probes.canvas ?? {}, webgl: probes.webgl ?? {}, audio: probes.audio ?? {}, environment: env, benchmark: probes.benchmark ?? {} };
   for (const [key, data] of Object.entries(mapping)) {
     const result = results[key] ?? { available: false, digest: null };
     setStatus(key, result.available ? "PASS" : "UNAVAILABLE");
@@ -62,12 +62,17 @@ function showSnapshot(snapshot) {
     $(key + "-result").textContent = short(display);
   }
   const available = Object.values(results).filter(x => x?.available).length, summary = $("run-summary");
-  $("overall-status").textContent = available + " / 4 modules available"; summary.replaceChildren();
+  $("overall-status").textContent = available + " / " + Object.keys(results).length + " modules available"; summary.replaceChildren();
   addSummaryRow(summary, "Run ID", snapshot.id, true);
   addSummaryRow(summary, "Timestamp", Number.isFinite(Date.parse(snapshot.timestamp)) ? new Date(snapshot.timestamp).toLocaleString() : "Unknown");
   addSummaryRow(summary, "Available probes", available + " of 4");
   addSummaryRow(summary, "Canvas digest", results.canvas?.digest, true);
   addSummaryRow(summary, "WebGL API", short(probes.webgl?.version, 42), true);
+  if (probes.benchmark?.workloads) {
+    for (const [name, result] of Object.entries(probes.benchmark.workloads)) {
+      addSummaryRow(summary, "Benchmark · " + name, result.available ? result.medianMs + " ms median · " + result.operationsPerSecond + " ops/s" : result.reason);
+    }
+  }
   if (snapshot.storageWarning) summary.append(make("p", "storage-warning", "Browser storage is unavailable; this snapshot may not persist after refresh."));
   renderComparison(snapshot.comparison); $("export-report").disabled = false;
 }
