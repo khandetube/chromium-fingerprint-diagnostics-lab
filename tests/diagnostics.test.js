@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot } from "../src/diagnostics.js";
+import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot, benchmarkProbe } from "../src/diagnostics.js";
 
 test("stableStringify sorts object keys recursively", () => {
   assert.equal(stableStringify({ z: 1, a: { y: 2, b: 3 } }), '{"a":{"b":3,"y":2},"z":1}');
@@ -54,9 +54,9 @@ test("collectEnvironment detects storage exceptions safely", () => {
 
 test("validateSnapshot accepts a complete version-1 snapshot", () => {
   const snapshot = {
-    schemaVersion: 1, id: "run-1", timestamp: "2026-11-04T10:00:00.000Z",
+    schemaVersion: 2, id: "run-1", timestamp: "2026-11-04T10:00:00.000Z",
     environment: {}, probes: {},
-    results: Object.fromEntries(["canvas", "webgl", "audio", "environment"].map(key =>
+    results: Object.fromEntries(["canvas", "webgl", "audio", "environment", "benchmark"].map(key =>
       [key, { available: true, digest: "deadbeef" }]))
   };
   assert.equal(validateSnapshot(snapshot), true);
@@ -67,10 +67,30 @@ test("validateSnapshot rejects malformed, oversized, and unsupported snapshots",
   const snapshot = {
     schemaVersion: 1, id: "run-1", timestamp: "2026-11-04T10:00:00.000Z",
     environment: {}, probes: {},
-    results: Object.fromEntries(["canvas", "webgl", "audio", "environment"].map(key =>
+    results: Object.fromEntries(["canvas", "webgl", "audio", "environment", "benchmark"].map(key =>
       [key, { available: true, digest: "x".repeat(129) }]))
   };
   assert.equal(validateSnapshot(snapshot), false);
   snapshot.results.extra = { available: true, digest: "x" };
   assert.equal(validateSnapshot(snapshot), false);
+});
+
+
+test("benchmarkProbe returns deterministic workload structure and finite metrics", () => {
+  let tick = 0;
+  const result = benchmarkProbe({ iterations: 3, operations: 500, now: () => tick++ });
+  assert.equal(result.available, true);
+  assert.deepEqual(Object.keys(result.workloads), ["numeric", "array", "serialization"]);
+  for (const item of Object.values(result.workloads)) {
+    assert.equal(item.available, true);
+    assert.ok(Number.isFinite(item.medianMs));
+    assert.ok(Number.isFinite(item.operationsPerSecond));
+    assert.ok(item.operationsPerSecond > 0);
+  }
+});
+test("benchmarkProbe clamps unsafe iteration and operation settings", () => {
+  let tick = 0;
+  const result = benchmarkProbe({ iterations: 1000, operations: 1, now: () => tick++ });
+  assert.equal(result.iterations, 9);
+  assert.equal(result.operations, 500);
 });
