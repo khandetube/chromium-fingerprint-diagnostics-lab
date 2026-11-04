@@ -10,3 +10,5 @@
 .benchmark-card{grid-column:span 2}
 @media(max-width:850px){.benchmark-card{grid-column:span 2}}
 @media(max-width:520px){.benchmark-card{grid-column:span 2}}
+
+.report-actions .button{white-space:nowrap}
