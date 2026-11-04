@@ -67,28 +67,83 @@ export async function audioProbe(win = globalThis.window) {
   } catch (error) { return { available: false, digest: null, summary: null, reason: error instanceof Error ? error.message : "Audio rendering failed" }; }
 }
 export async function runDiagnostics() {
-  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), audio = await audioProbe();
+  const environment = collectEnvironment(), canvas = canvasProbe(), webgl = webglProbe(), audio = await audioProbe(), benchmark = benchmarkProbe();
   const results = { canvas: { digest: canvas.digest, available: canvas.available, reason: canvas.reason ?? null }, webgl: { digest: fnv1a(stableStringify(webgl)), available: webgl.available, reason: webgl.reason ?? null },
-    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true } };
-  return { schemaVersion: 1, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio }, results };
+    audio: { digest: audio.digest, available: audio.available, reason: audio.reason ?? null }, environment: { digest: fnv1a(stableStringify(environment)), available: true }, benchmark: { digest: benchmark.digest, available: benchmark.available } };
+  return { schemaVersion: 2, id: globalThis.crypto?.randomUUID?.() ?? String(Date.now()), timestamp: new Date().toISOString(), environment, probes: { canvas, webgl, audio, benchmark }, results };
 }
 
 
 /** Structural validation for imported snapshots; not an authenticity check. */
 export function validateSnapshot(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  if (value.schemaVersion !== 1) return false;
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2) return false;
   if (typeof value.id !== "string" || value.id.length < 1 || value.id.length > 128) return false;
   if (typeof value.timestamp !== "string" || !Number.isFinite(Date.parse(value.timestamp))) return false;
   if (!value.environment || typeof value.environment !== "object" || Array.isArray(value.environment)) return false;
   if (!value.probes || typeof value.probes !== "object" || Array.isArray(value.probes)) return false;
   if (!value.results || typeof value.results !== "object" || Array.isArray(value.results)) return false;
-  const allowed = new Set(["canvas", "webgl", "audio", "environment"]);
+  const allowed = new Set(value.schemaVersion === 1 ? ["canvas", "webgl", "audio", "environment"] : ["canvas", "webgl", "audio", "environment", "benchmark"]);
   const keys = Object.keys(value.results);
-  if (keys.length !== 4 || keys.some(key => !allowed.has(key))) return false;
+  if (keys.length !== allowed.size || keys.some(key => !allowed.has(key))) return false;
   return keys.every(key => {
     const result = value.results[key];
     return result && typeof result === "object" && typeof result.available === "boolean" &&
       (result.digest === null || (typeof result.digest === "string" && result.digest.length <= 128));
   });
+}
+
+
+/**
+ * Small repeatable JavaScript runtime benchmark.
+ * It measures local execution cost only; results are not device identifiers.
+ */
+export function benchmarkProbe(options = {}) {
+  const iterations = Math.min(9, Math.max(3, Number.isInteger(options.iterations) ? options.iterations : 5));
+  const operations = Math.min(20000, Math.max(500, Number.isInteger(options.operations) ? options.operations : 3000));
+  const now = typeof options.now === "function" ? options.now : () => globalThis.performance?.now?.() ?? Date.now();
+  const workloads = {
+    numeric: () => {
+      let value = 0;
+      for (let i = 0; i < operations; i++) value = (value + Math.sqrt(i + 1) * 1.000001) % 1000003;
+      return value;
+    },
+    array: () => {
+      const values = Array.from({ length: operations }, (_, i) => i);
+      return values.map(value => (value * 31 + 7) % 65521).reduce((sum, value) => sum + value, 0);
+    },
+    serialization: () => {
+      const payload = Array.from({ length: Math.min(operations, 5000) }, (_, i) => ({ id: i, value: (i * 17) % 997, active: i % 2 === 0 }));
+      return JSON.stringify(payload).length;
+    }
+  };
+  const percentile = (values, fraction) => values[Math.min(values.length - 1, Math.ceil(values.length * fraction) - 1)];
+  const results = {};
+  for (const [name, workload] of Object.entries(workloads)) {
+    try {
+      workload(); // warm-up, excluded from measurements
+      const durations = [];
+      let checksum = 0;
+      for (let run = 0; run < iterations; run++) {
+        const start = now();
+        checksum += Number(workload()) || 0;
+        const elapsed = Math.max(0.001, now() - start);
+        durations.push(elapsed);
+      }
+      durations.sort((a, b) => a - b);
+      const medianMs = durations[Math.floor(durations.length / 2)];
+      results[name] = {
+        available: true, iterations, operations,
+        medianMs: Number(medianMs.toFixed(3)),
+        p95Ms: Number(percentile(durations, 0.95).toFixed(3)),
+        operationsPerSecond: Number((operations / (medianMs / 1000)).toFixed(1)),
+        checksum
+      };
+    } catch (error) {
+      results[name] = { available: false, reason: error instanceof Error ? error.message : "Benchmark failed" };
+    }
+  }
+  const available = Object.values(results).filter(item => item.available).length;
+  return { available: available > 0, iterations, operations, workloads: results,
+    digest: fnv1a(stableStringify(results)), note: "Relative local benchmark only; compare under similar device load and power conditions." };
 }
