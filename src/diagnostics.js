@@ -46,15 +46,48 @@ export function canvasProbe(doc = globalThis.document) {
   } catch (error) { return { available: false, digest: null, reason: error instanceof Error ? error.message : "Canvas probe failed" }; }
 }
 export function webglProbe(doc = globalThis.document) {
-  if (!doc?.createElement) return { available: false, version: null, renderer: null, vendor: null, limits: {}, reason: "document unavailable" };
+  const unavailable = reason => ({ available:false, api:null, version:null, shadingLanguage:null, renderer:null, vendor:null, contextAttributes:null, limits:{}, extensions:[], extensionCount:0, precision:{}, digest:null, reason });
+  if (!doc?.createElement) return unavailable("document unavailable");
   try {
-    const canvas = doc.createElement("canvas"), gl = canvas.getContext("webgl2") || canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-    if (!gl) return { available: false, version: null, renderer: null, vendor: null, limits: {}, reason: "WebGL unavailable or disabled" };
-    const debug = gl.getExtension("WEBGL_debug_renderer_info"), safeGet = key => { try { return gl.getParameter(key); } catch { return null; } };
-    return { available: true, version: safeGet(gl.VERSION), renderer: debug ? safeGet(debug.UNMASKED_RENDERER_WEBGL) : "restricted or unavailable", vendor: debug ? safeGet(debug.UNMASKED_VENDOR_WEBGL) : "restricted or unavailable",
-      limits: { maxTextureSize: safeGet(gl.MAX_TEXTURE_SIZE), maxCubeMapSize: safeGet(gl.MAX_CUBE_MAP_TEXTURE_SIZE), maxRenderbufferSize: safeGet(gl.MAX_RENDERBUFFER_SIZE), maxVertexAttribs: safeGet(gl.MAX_VERTEX_ATTRIBS) } };
-  } catch (error) { return { available: false, version: null, renderer: null, vendor: null, limits: {}, reason: error instanceof Error ? error.message : "WebGL probe failed" }; }
+    const canvas=doc.createElement("canvas");
+    let gl=canvas.getContext("webgl2");
+    let api="WebGL 2";
+    if(!gl){gl=canvas.getContext("webgl")||canvas.getContext("experimental-webgl");api="WebGL 1";}
+    if(!gl)return unavailable("WebGL unavailable or disabled");
+    const get=(key)=>{try{return gl.getParameter(key)}catch{return null}};
+    const debug=gl.getExtension("WEBGL_debug_renderer_info");
+    const extensions=(()=>{try{return (gl.getSupportedExtensions()||[]).filter(x=>typeof x==="string").sort()}catch{return []}})();
+    const limits={};
+    for(const [name,key] of Object.entries({
+      maxTextureSize:gl.MAX_TEXTURE_SIZE,maxCubeMapSize:gl.MAX_CUBE_MAP_TEXTURE_SIZE,
+      maxRenderbufferSize:gl.MAX_RENDERBUFFER_SIZE,maxVertexAttribs:gl.MAX_VERTEX_ATTRIBS,
+      maxVertexUniformVectors:gl.MAX_VERTEX_UNIFORM_VECTORS,maxFragmentUniformVectors:gl.MAX_FRAGMENT_UNIFORM_VECTORS,
+      maxVaryingVectors:gl.MAX_VARYING_VECTORS,maxTextureImageUnits:gl.MAX_TEXTURE_IMAGE_UNITS,
+      maxCombinedTextureImageUnits:gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS,
+      maxViewportWidth:gl.MAX_VIEWPORT_DIMS
+    })) limits[name]=key===undefined?null:get(key);
+    if(api==="WebGL 2"){
+      for(const [name,key] of Object.entries({max3DTextureSize:gl.MAX_3D_TEXTURE_SIZE,maxArrayTextureLayers:gl.MAX_ARRAY_TEXTURE_LAYERS,maxDrawBuffers:gl.MAX_DRAW_BUFFERS,maxColorAttachments:gl.MAX_COLOR_ATTACHMENTS,maxSamples:gl.MAX_SAMPLES})) limits[name]=get(key);
+    }
+    const precision={};
+    for(const shaderType of ["VERTEX_SHADER","FRAGMENT_SHADER"]){
+      const type=gl[shaderType];
+      for(const precisionType of ["LOW_FLOAT","MEDIUM_FLOAT","HIGH_FLOAT"]){
+        const key=shaderType.toLowerCase()+"_"+precisionType.toLowerCase();
+        try{const p=gl.getShaderPrecisionFormat(type,gl[precisionType]);precision[key]=p?{rangeMin:p.rangeMin,rangeMax:p.rangeMax,precision:p.precision}:null}catch{precision[key]=null}
+      }
+    }
+    const attributes=(()=>{try{return gl.getContextAttributes()}catch{return null}})();
+    const contextAttributes=attributes?{alpha:attributes.alpha,antialias:attributes.antialias,depth:attributes.depth,stencil:attributes.stencil,premultipliedAlpha:attributes.premultipliedAlpha,preserveDrawingBuffer:attributes.preserveDrawingBuffer,powerPreference:attributes.powerPreference}:null;
+    const data={available:true,api,version:get(gl.VERSION),shadingLanguage:get(gl.SHADING_LANGUAGE_VERSION),
+      renderer:debug?get(debug.UNMASKED_RENDERER_WEBGL):"restricted or unavailable",
+      vendor:debug?get(debug.UNMASKED_VENDOR_WEBGL):"restricted or unavailable",
+      limits,extensions,extensionCount:extensions.length,precision,contextAttributes};
+    data.digest=fnv1a(stableStringify(data));
+    return data;
+  }catch(error){return unavailable(error instanceof Error?error.message:"WebGL capability probe failed")}
 }
+
 export async function audioProbe(win = globalThis.window) {
   const Offline = win?.OfflineAudioContext || win?.webkitOfflineAudioContext;
   if (!Offline) return { available: false, digest: null, summary: null, reason: "OfflineAudioContext unavailable" };
