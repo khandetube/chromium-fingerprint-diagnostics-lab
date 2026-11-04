@@ -38,7 +38,7 @@ test("diagnostics run, persist a snapshot, and export valid JSON", async ({ page
   const csvPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /Export CSV/ }).click();
   const csvDownload = await csvPromise;
-  expect(csvDownload.suggestedFilename()).toMatch(/^diagnostics-.+\\.csv$/);
+  expect(csvDownload.suggestedFilename()).toMatch(/^diagnostics-.+\.csv$/);
   const csvText = await readFile(await csvDownload.path(), "utf8");
   expect(csvText).toContain("snapshot_id,timestamp,module,available,digest,reason");
   expect(csvText).toContain("gpuRendering");
