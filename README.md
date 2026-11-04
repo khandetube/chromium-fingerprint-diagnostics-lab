@@ -9,7 +9,7 @@ A transparent, local-first browser diagnostics and privacy research workbench. I
 - WebGL capability and renderer metadata inspection, where the browser exposes it.
 - Web Audio API availability and offline-render consistency probe.
 - Browser/runtime environment inventory with permission-conscious feature detection.
-- Timestamped local snapshots, side-by-side comparison, and JSON report export.
+- Timestamped local snapshots, side-by-side comparison, JSON import/export with structural validation.\n- Local JavaScript microbenchmarks for numeric, array, and serialization workloads (median latency and throughput).
 - No remote telemetry; results remain in the browser unless the user exports them.
 
 ## Run locally
@@ -26,7 +26,7 @@ Run the automated core tests with Node.js 20+:
 npm test
 ```
 
-## Reproducibility notes
+## Benchmark interpretation\n\nThe JavaScript benchmark is a lightweight local regression signal, not a standardized cross-device score. Compare runs on the same browser/device under similar thermal, battery, and background-load conditions. The workload results are not cryptographic evidence and must not be used to identify devices.\n\n## Reproducibility notes
 Results can vary with browser version, operating system, GPU driver, power state, privacy settings, and headless/automation context. A matching digest is not proof of a unique device; a changed digest is not necessarily evidence of tampering. WebGL renderer strings may be unavailable or intentionally restricted by the browser.
 
 For useful comparisons, record the browser version, OS, test date, and whether hardware acceleration or privacy protections are enabled. Do not use this tool to identify or track people.
