@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Local-first browser API diagnostics and reproducibility workbench.">
+  <title>Browser Diagnostics Lab</title>
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Diagnostics Lab home"><span class="brand-mark">D</span><span>DIAGNOSTICS<span class="muted"> / LAB</span></span></a>
+    <div class="top-actions"><span class="privacy-pill"><i></i> LOCAL ONLY</span><button id="run-all" class="button primary">Run diagnostics <span aria-hidden="true">↗</span></button></div>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <div><p class="eyebrow">BROWSER OBSERVABILITY WORKBENCH</p><h1>Understand your browser.<br><span class="gradient-text">Measure what it exposes.</span></h1><p class="hero-copy">A transparent, reproducible suite for inspecting browser capabilities and comparing local test runs — without remote tracking.</p></div>
+      <div class="hero-status"><span class="pulse"></span><div><strong id="overall-status">Ready to test</strong><small>Diagnostics execute in this browser</small></div></div>
+    </section>
+    <section class="meta-grid" aria-label="Runtime summary">
+      <article class="meta-card"><span>USER AGENT</span><strong id="ua-summary">Not collected</strong></article>
+      <article class="meta-card"><span>PLATFORM</span><strong id="platform-summary">Not collected</strong></article>
+      <article class="meta-card"><span>LANGUAGE</span><strong id="language-summary">Not collected</strong></article>
+      <article class="meta-card"><span>CORES REPORTED</span><strong id="cores-summary">—</strong></article>
+    </section>
+    <div class="section-heading"><div><p class="eyebrow">TEST MODULES</p><h2>Diagnostic coverage</h2></div><span class="section-note">No permission prompts required</span></div>
+    <section class="module-grid">
+      <article class="module-card"><div class="module-head"><span class="module-icon">▧</span><span class="status-tag" id="canvas-status">NOT RUN</span></div><h3>Canvas 2D</h3><p>Deterministic drawing probe and pixel digest for rendering consistency checks.</p><div class="result-line"><span>Digest</span><code id="canvas-result">—</code></div></article>
+      <article class="module-card"><div class="module-head"><span class="module-icon">◇</span><span class="status-tag" id="webgl-status">NOT RUN</span></div><h3>WebGL</h3><p>Context availability, API version, limits, and browser-exposed renderer metadata.</p><div class="result-line"><span>Context</span><code id="webgl-result">—</code></div></article>
+      <article class="module-card"><div class="module-head"><span class="module-icon">♫</span><span class="status-tag" id="audio-status">NOT RUN</span></div><h3>Web Audio</h3><p>Offline audio rendering capability and deterministic signal summary.</p><div class="result-line"><span>Digest</span><code id="audio-result">—</code></div></article>
+      <article class="module-card"><div class="module-head"><span class="module-icon">⌘</span><span class="status-tag" id="environment-status">NOT RUN</span></div><h3>Environment</h3><p>Feature availability and coarse runtime characteristics exposed by standard APIs.</p><div class="result-line"><span>Features</span><code id="environment-result">—</code></div></article>
+    </section>
+    <section class="workspace-grid">
+      <article class="panel"><div class="panel-heading"><div><p class="eyebrow">EVIDENCE</p><h2>Latest run</h2></div><button id="export-report" class="button secondary" disabled>Export JSON ↓</button></div><div id="run-summary" class="empty-state">Run diagnostics to generate a local evidence snapshot.</div><div class="disclaimer">Results describe this browser session only. They are not a unique device identifier and should not be used to track individuals.</div></article>
+      <article class="panel"><div class="panel-heading"><div><p class="eyebrow">LOCAL HISTORY</p><h2>Snapshots</h2></div><button id="clear-history" class="text-button">Clear</button></div><div id="history-list" class="history-list"><p class="empty-state">No saved snapshots yet.</p></div></article>
+    </section>
+    <footer><span>DIAGNOSTICS LAB <span class="muted">v0.1.0</span></span><span>Privacy-first · Open source · No telemetry</span></footer>
+  </main>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
