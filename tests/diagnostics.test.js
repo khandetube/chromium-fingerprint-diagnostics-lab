@@ -94,3 +94,30 @@ test("benchmarkProbe clamps unsafe iteration and operation settings", () => {
   assert.equal(result.iterations, 9);
   assert.equal(result.operations, 500);
 });
+
+test("webglProbe collects WebGL limits, extensions, shader precision and context attributes", () => {
+  const gl = {
+    VERSION:1, SHADING_LANGUAGE_VERSION:2, MAX_TEXTURE_SIZE:3, MAX_CUBE_MAP_TEXTURE_SIZE:4,
+    MAX_RENDERBUFFER_SIZE:5, MAX_VERTEX_ATTRIBS:6, MAX_VERTEX_UNIFORM_VECTORS:7,
+    MAX_FRAGMENT_UNIFORM_VECTORS:8, MAX_VARYING_VECTORS:9, MAX_TEXTURE_IMAGE_UNITS:10,
+    MAX_COMBINED_TEXTURE_IMAGE_UNITS:11, MAX_VIEWPORT_DIMS:12,
+    VERTEX_SHADER:13, FRAGMENT_SHADER:14, LOW_FLOAT:15, MEDIUM_FLOAT:16, HIGH_FLOAT:17,
+    getParameter(key){return ({1:"WebGL 2.0",2:"GLSL ES 3.00",3:8192,4:4096,5:8192,6:16,7:256,8:224,9:16,10:16,11:32,12:[8192,8192]})[key]??null;},
+    getExtension(){return null;}, getSupportedExtensions(){return ["OES_texture_float","EXT_color_buffer_float"];},
+    getShaderPrecisionFormat(){return {rangeMin:127,rangeMax:127,precision:23};},
+    getContextAttributes(){return {alpha:true,antialias:true,depth:true,stencil:false,premultipliedAlpha:true,preserveDrawingBuffer:false,powerPreference:"default"};}
+  };
+  const result=webglProbe({createElement:()=>({getContext:type=>type==="webgl2"?gl:null})});
+  assert.equal(result.available,true);
+  assert.equal(result.api,"WebGL 2");
+  assert.equal(result.limits.maxTextureSize,8192);
+  assert.equal(result.extensionCount,2);
+  assert.equal(result.precision.vertex_shader_high_float.precision,23);
+  assert.equal(result.contextAttributes.antialias,true);
+  assert.equal(typeof result.digest,"string");
+});
+test("webglProbe gracefully handles exceptions from browser WebGL APIs", () => {
+  const result=webglProbe({createElement:()=>({getContext:()=>{throw new Error("GPU context blocked")}})});
+  assert.equal(result.available,false);
+  assert.match(result.reason,/GPU context blocked/);
+});
