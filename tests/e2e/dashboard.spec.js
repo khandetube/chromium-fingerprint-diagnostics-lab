@@ -40,16 +40,16 @@ test("diagnostics run, persist a snapshot, and export valid JSON", async ({ page
   const csvDownload = await csvPromise;
   expect(csvDownload.suggestedFilename()).toMatch(/^diagnostics-.+\.csv$/);
   const csvText = await readFile(await csvDownload.path(), "utf8");
-  expect(csvText.replace(/^\\uFEFF/, "")).toContain('"snapshot_id","timestamp","module","available","digest","reason"');
+  expect(csvText.replace(/^\uFEFF/, "")).toContain('"snapshot_id","timestamp","module","available","digest","reason"');
   expect(csvText).toContain("gpuRendering");
   await expect(page.getByRole("button", { name: /Export HTML/ })).toBeEnabled();
   const htmlPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: /Export HTML/ }).click();
   const htmlDownload = await htmlPromise;
-  expect(htmlDownload.suggestedFilename()).toMatch(/^diagnostics-.+\\.html$/);
+  expect(htmlDownload.suggestedFilename()).toMatch(/^diagnostics-.+\.html$/);
   const reportHtml = await readFile(await htmlDownload.path(), "utf8");
   expect(reportHtml).toContain("Diagnostics evidence report");
-  expect(reportHtml).toContain("GPU rendering");
+  expect(reportHtml).toContain("gpuRendering");
   expect(reportHtml).toContain("non-cryptographic comparison checksums");
 });
 
@@ -59,7 +59,7 @@ test("valid snapshot import succeeds and malformed JSON is rejected", async ({ p
     schemaVersion: 3,
     id: "browser-e2e-import",
     timestamp: new Date().toISOString(),
-    environment: {},
+    environment: { userAgent: '<img src=x onerror="alert(1)">' },
     probes: {},
     results: Object.fromEntries(
       ["canvas", "webgl", "audio", "environment", "benchmark", "gpuRendering", "compatibility", "contextLifecycle"]
@@ -74,6 +74,13 @@ test("valid snapshot import succeeds and malformed JSON is rejected", async ({ p
   });
   await expect(page.locator("#overall-status")).toHaveText("Imported snapshot successfully");
   await expect(page.locator("#run-summary")).toContainText("browser-e2e-import");
+  await expect(page.getByRole("button", { name: /Export HTML/ })).toBeEnabled();
+  const reportPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Export HTML/ }).click();
+  const reportDownload = await reportPromise;
+  const importedReport = await readFile(await reportDownload.path(), "utf8");
+  expect(importedReport).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+  expect(importedReport).not.toContain('<img src=x onerror="alert(1)">');
 
   await page.locator("#import-file").setInputFiles({
     name: "broken.json",
