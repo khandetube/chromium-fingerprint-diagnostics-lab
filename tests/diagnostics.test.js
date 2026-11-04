@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe } from "../src/diagnostics.js";
+import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot } from "../src/diagnostics.js";
 
 test("stableStringify sorts object keys recursively", () => {
   assert.equal(stableStringify({ z: 1, a: { y: 2, b: 3 } }), '{"a":{"b":3,"y":2},"z":1}');
@@ -49,4 +49,28 @@ test("audioProbe returns unavailable when OfflineAudioContext is missing", async
 });
 test("collectEnvironment detects storage exceptions safely", () => {
   const win = { get localStorage(){ throw new Error("blocked"); }, document: null }; const env = collectEnvironment({}, win); assert.equal(env.features.localStorage, false);
+});
+
+
+test("validateSnapshot accepts a complete version-1 snapshot", () => {
+  const snapshot = {
+    schemaVersion: 1, id: "run-1", timestamp: "2026-11-04T10:00:00.000Z",
+    environment: {}, probes: {},
+    results: Object.fromEntries(["canvas", "webgl", "audio", "environment"].map(key =>
+      [key, { available: true, digest: "deadbeef" }]))
+  };
+  assert.equal(validateSnapshot(snapshot), true);
+});
+test("validateSnapshot rejects malformed, oversized, and unsupported snapshots", () => {
+  assert.equal(validateSnapshot(null), false);
+  assert.equal(validateSnapshot({ schemaVersion: 2 }), false);
+  const snapshot = {
+    schemaVersion: 1, id: "run-1", timestamp: "2026-11-04T10:00:00.000Z",
+    environment: {}, probes: {},
+    results: Object.fromEntries(["canvas", "webgl", "audio", "environment"].map(key =>
+      [key, { available: true, digest: "x".repeat(129) }]))
+  };
+  assert.equal(validateSnapshot(snapshot), false);
+  snapshot.results.extra = { available: true, digest: "x" };
+  assert.equal(validateSnapshot(snapshot), false);
 });
