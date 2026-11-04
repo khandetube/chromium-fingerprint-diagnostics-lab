@@ -11,7 +11,10 @@ int main() {
   assert(summary.sample_count == 4);
   assert(summary.minimum == -1.0);
   assert(summary.maximum == 2.0);
-  assert(std::abs(summary.mean - 0.5) < 1e-12);\n  assert(std::abs(summary.root_mean_square - std::sqrt(1.5)) < 1e-12);\n  assert(std::abs(summary.standard_deviation - std::sqrt(1.25)) < 1e-12);\n  assert(summary.zero_crossings == 1);
+  assert(std::abs(summary.mean - 0.5) < 1e-12);
+  assert(std::abs(summary.root_mean_square - std::sqrt(1.5)) < 1e-12);
+  assert(std::abs(summary.standard_deviation - std::sqrt(1.25)) < 1e-12);
+  assert(summary.zero_crossings == 1);
   assert(summary.fnv1a64.size() == 16);
 
   const auto empty = diagnostics::SummarizeSignal({});
