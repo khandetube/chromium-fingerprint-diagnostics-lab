@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot, benchmarkProbe } from "../src/diagnostics.js";
+import { fnv1a, stableStringify, summarizeArray, compareSnapshots, collectEnvironment, canvasProbe, webglProbe, audioProbe, validateSnapshot, benchmarkProbe, webglRenderingProbe } from "../src/diagnostics.js";
 
 test("stableStringify sorts object keys recursively", () => {
   assert.equal(stableStringify({ z: 1, a: { y: 2, b: 3 } }), '{"a":{"b":3,"y":2},"z":1}');
@@ -120,4 +120,28 @@ test("webglProbe gracefully handles exceptions from browser WebGL APIs", () => {
   const result=webglProbe({createElement:()=>({getContext:()=>{throw new Error("GPU context blocked")}})});
   assert.equal(result.available,false);
   assert.match(result.reason,/GPU context blocked/);
+});
+
+test("webglRenderingProbe returns a safe unavailable result without a context", () => {
+  const result=webglRenderingProbe({createElement:()=>({getContext:()=>null})});
+  assert.equal(result.available,false);
+  assert.match(result.reason,/context unavailable/);
+});
+test("webglRenderingProbe compiles, links, draws and reads a pixel", () => {
+  let id=0;
+  const gl={
+    VERTEX_SHADER:1,FRAGMENT_SHADER:2,COMPILE_STATUS:3,LINK_STATUS:4,ARRAY_BUFFER:5,STATIC_DRAW:6,
+    TRIANGLES:7,FLOAT:8,COLOR_BUFFER_BIT:9,RGBA:10,UNSIGNED_BYTE:11,NO_ERROR:0,
+    createShader:type=>({id:++id,type}),shaderSource(){},compileShader(){},getShaderParameter:()=>true,getShaderInfoLog:()=>" ",
+    createProgram:()=>({id:++id}),attachShader(){},bindAttribLocation(){},linkProgram(){},getProgramParameter:()=>true,getProgramInfoLog:()=>" ",
+    createBuffer:()=>({id:++id}),bindBuffer(){},bufferData(){},viewport(){},useProgram(){},enableVertexAttribArray(){},vertexAttribPointer(){},
+    clearColor(){},clear(){},drawArrays(){},readPixels(x,y,w,h,f,t,p){p.set([20,180,80,255]);},
+    getError:()=>0,isContextLost:()=>false,deleteBuffer(){},deleteProgram(){},deleteShader(){}
+  };
+  const result=webglRenderingProbe({createElement:()=>({getContext:type=>type==="webgl2"?null:gl})});
+  assert.equal(result.available,true);
+  assert.equal(result.shaderCompile,true);
+  assert.equal(result.programLink,true);
+  assert.equal(result.drawReadback,true);
+  assert.deepEqual(result.centerPixel,[20,180,80,255]);
 });
