@@ -25,7 +25,8 @@ SignalSummary SummarizeSignal(const std::vector<double>& samples) {
 
   double minimum = std::numeric_limits<double>::infinity();
   double maximum = -std::numeric_limits<double>::infinity();
-  long double sum = 0.0L;\n  long double sum_squares = 0.0L;
+  long double sum = 0.0L;
+  long double sum_squares = 0.0L;
   std::ostringstream canonical;
   canonical << std::setprecision(std::numeric_limits<double>::max_digits10);
 
@@ -36,13 +37,19 @@ SignalSummary SummarizeSignal(const std::vector<double>& samples) {
     canonical << value;
     minimum = value < minimum ? value : minimum;
     maximum = value > maximum ? value : maximum;
-    sum += static_cast<long double>(value);\n    sum_squares += static_cast<long double>(value) * value;\n    if (i > 0 && ((samples[i - 1] < 0.0 && value >= 0.0) || (samples[i - 1] >= 0.0 && value < 0.0))) ++result.zero_crossings;
+    sum += static_cast<long double>(value);
+    sum_squares += static_cast<long double>(value) * value;
+    if (i > 0 && ((samples[i - 1] < 0.0 && value >= 0.0) || (samples[i - 1] >= 0.0 && value < 0.0))) ++result.zero_crossings;
   }
 
   const std::string bytes = canonical.str();
   result.minimum = minimum;
   result.maximum = maximum;
-  result.mean = static_cast<double>(sum / samples.size());\n  result.root_mean_square = std::sqrt(static_cast<double>(sum_squares / samples.size()));\n  long double squared_deviation = 0.0L;\n  for (double value : samples) { const long double delta = static_cast<long double>(value) - result.mean; squared_deviation += delta * delta; }\n  result.standard_deviation = std::sqrt(static_cast<double>(squared_deviation / samples.size()));
+  result.mean = static_cast<double>(sum / samples.size());
+  result.root_mean_square = std::sqrt(static_cast<double>(sum_squares / samples.size()));
+  long double squared_deviation = 0.0L;
+  for (double value : samples) { const long double delta = static_cast<long double>(value) - result.mean; squared_deviation += delta * delta; }
+  result.standard_deviation = std::sqrt(static_cast<double>(squared_deviation / samples.size()));
   result.fnv1a64 = Fnv1a64(
       reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size());
   result.valid = true;
