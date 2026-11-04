@@ -6,9 +6,13 @@
   "description": "Local-first browser API diagnostics and reproducibility workbench",
   "scripts": {
     "test": "node --test",
-    "check": "node --check src/diagnostics.js && node --check src/app.js"
+    "check": "node --check src/diagnostics.js && node --check src/app.js",
+    "test:e2e": "playwright test"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
   }
 }
