@@ -33,6 +33,15 @@ test("diagnostics run, persist a snapshot, and export valid JSON", async ({ page
   expect(snapshot.results).toHaveProperty("compatibility");
   expect(snapshot.results).toHaveProperty("contextLifecycle");
   expect(snapshot.timestamp).toBeTruthy();
+
+  await expect(page.getByRole("button", { name: /Export CSV/ })).toBeEnabled();
+  const csvPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: /Export CSV/ }).click();
+  const csvDownload = await csvPromise;
+  expect(csvDownload.suggestedFilename()).toMatch(/^diagnostics-.+\\.csv$/);
+  const csvText = await readFile(await csvDownload.path(), "utf8");
+  expect(csvText).toContain("snapshot_id,timestamp,module,available,digest,reason");
+  expect(csvText).toContain("gpuRendering");
 });
 
 test("valid snapshot import succeeds and malformed JSON is rejected", async ({ page }) => {
