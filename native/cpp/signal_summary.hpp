@@ -11,7 +11,10 @@ struct SignalSummary {
   std::size_t sample_count = 0;
   double minimum = 0.0;
   double maximum = 0.0;
-  double mean = 0.0;\n  double root_mean_square = 0.0;\n  double standard_deviation = 0.0;\n  std::size_t zero_crossings = 0;
+  double mean = 0.0;
+  double root_mean_square = 0.0;
+  double standard_deviation = 0.0;
+  std::size_t zero_crossings = 0;
   std::string fnv1a64;
   bool valid = false;
 };
