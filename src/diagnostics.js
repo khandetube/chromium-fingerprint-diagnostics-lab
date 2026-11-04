@@ -95,7 +95,7 @@ export function webglProbe(doc = globalThis.document) {
 export function webglRenderingProbe(doc = globalThis.document) {
   const unavailable = reason => ({ available:false, shaderCompile:false, programLink:false, framebufferComplete:null, drawReadback:false, contextLost:null, reason });
   if (!doc?.createElement) return unavailable("document unavailable");
-  let gl, program, vertex, fragment, buffer;
+  let gl, program, vertex, fragment, buffer, texture, framebuffer;
   try {
     const canvas=doc.createElement("canvas"); canvas.width=16; canvas.height=16;
     gl=canvas.getContext("webgl2")||canvas.getContext("webgl");
@@ -123,9 +123,9 @@ export function webglRenderingProbe(doc = globalThis.document) {
     const error=gl.getError();
     const drawReadback=error===gl.NO_ERROR && pixel[1]>0;
     const lost=contextLost();
-    return {available:!lost,shaderCompile:true,programLink:true,framebufferComplete:null,drawReadback,centerPixel:Array.from(pixel),glError:error,contextLost:lost,reason:lost?"Context lost during rendering":drawReadback?null:"Draw/readback validation failed"};
+    return {available:!lost,shaderCompile:true,programLink:true,framebufferComplete,drawReadback,centerPixel:Array.from(pixel),glError:error,contextLost:lost,reason:lost?"Context lost during rendering":drawReadback?null:"Draw/readback validation failed"};
   }catch(error){return {...unavailable(error instanceof Error?error.message:"WebGL rendering validation failed"),contextLost:gl?(()=>{try{return gl.isContextLost()}catch{return null}})():null}}
-  finally{try{if(gl&&buffer)gl.deleteBuffer(buffer);if(gl&&program)gl.deleteProgram(program);if(gl&&vertex)gl.deleteShader(vertex);if(gl&&fragment)gl.deleteShader(fragment)}catch{/* Context may have been lost during cleanup. */}}
+  finally{try{if(gl&&buffer)gl.deleteBuffer(buffer);if(gl&&texture)gl.deleteTexture(texture);if(gl&&framebuffer)gl.deleteFramebuffer(framebuffer);if(gl&&program)gl.deleteProgram(program);if(gl&&vertex)gl.deleteShader(vertex);if(gl&&fragment)gl.deleteShader(fragment)}catch{/* Context may have been lost during cleanup. */}}
 }
 
 
